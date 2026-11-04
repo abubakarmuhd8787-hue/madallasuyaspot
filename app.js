@@ -5,7 +5,7 @@ let products = [];
 let areas = [];
 let settings = Object.assign({}, defaultSettings);
 
-// The logged-in customer's saved details (null when shopping as a guest)
+// The logged-in customer's saved details (null when nobody is logged in)
 let customerProfile = null;
 
 // The cart is saved as { productId: quantity } so it survives a page refresh
@@ -512,11 +512,25 @@ function prefillCheckout() {
   if (!addressInput.value && customerProfile.address) addressInput.value = customerProfile.address;
 }
 
-document.getElementById('checkoutBtn').addEventListener('click', function () {
+function openCheckout() {
   cartPanel.classList.add('hidden');
   checkoutModal.classList.remove('hidden');
   prefillCheckout();
   updateSummary();
+}
+
+// Checkout needs an account. Anyone not logged in is sent to the login page,
+// and brought back here afterwards with their cart still saved.
+document.getElementById('checkoutBtn').addEventListener('click', async function () {
+  const { data } = await db.auth.getSession();
+
+  if (!data.session) {
+    location.href = 'login.html?need=1&next=' + encodeURIComponent('index.html?checkout=1');
+    return;
+  }
+
+  if (customerProfile === null) await loadCustomer();
+  openCheckout();
 });
 
 document.getElementById('closeCheckout').addEventListener('click', function () {
@@ -611,9 +625,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
       ' and use ' + orderNumber + ' as the reference. Then send your payment proof on WhatsApp.';
   }
 
-  doneText += customerProfile
-    ? ' You can also find this order in My account.'
-    : ' Keep your order number to follow your order on the Track order page.';
+  doneText += ' You can follow this order any time in My account.';
   document.getElementById('doneText').textContent = doneText;
 
   const message =
@@ -738,14 +750,23 @@ async function loadSettingsFromDb() {
 }
 
 // ---------- CUSTOMER LOGIN ----------
-// If the customer is logged in: change the top link to "My account",
-// and remember their saved details so checkout can fill them in.
+// Logged in: the top link becomes "My account" and checkout is filled in for them.
+// Not logged in: the top link says "Log in" and the checkout button asks them to log in.
 async function loadCustomer() {
   const { data } = await db.auth.getSession();
-  if (!data.session) return;
+  const accountLink = document.getElementById('accountLink');
+  const checkoutBtn = document.getElementById('checkoutBtn');
 
-  document.getElementById('accountLink').textContent = 'My account';
-  document.getElementById('loginHint').classList.add('hidden');
+  if (!data.session) {
+    accountLink.textContent = 'Log in';
+    accountLink.href = 'login.html';
+    checkoutBtn.textContent = 'Log in to checkout';
+    return;
+  }
+
+  accountLink.textContent = 'My account';
+  accountLink.href = 'account.html';
+  checkoutBtn.textContent = 'Checkout';
 
   const { data: profile } = await db
     .from('profiles')
@@ -754,6 +775,10 @@ async function loadCustomer() {
     .maybeSingle();
 
   customerProfile = profile || {};
+
+  // Google accounts may not have a name in the profile yet
+  const meta = data.session.user.user_metadata || {};
+  if (!customerProfile.full_name) customerProfile.full_name = meta.full_name || meta.name || '';
 }
 
 // ---------- START ----------
@@ -768,6 +793,12 @@ async function start() {
   renderCart();
   renderFooter();
   await loadCustomer();
+
+  // Coming back from the login page: open checkout straight away
+  if (new URLSearchParams(location.search).get('checkout') && customerProfile && cartCount() > 0) {
+    history.replaceState(null, '', 'index.html');
+    openCheckout();
+  }
 }
 
 start();

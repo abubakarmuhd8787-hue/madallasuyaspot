@@ -11,70 +11,29 @@
     <h1>My account</h1>
     <div class="top-actions">
       <a class="cart-btn" href="index.html">Shop</a>
-      <button id="logoutBtn" class="cart-btn hidden">Log out</button>
+      <button id="logoutBtn" class="cart-btn">Log out</button>
     </div>
   </header>
 
   <main class="narrow">
+    <h2>My details</h2>
+    <p class="hint">These are filled in for you at checkout.</p>
+    <form id="profileForm">
+      <label>Full name
+        <input type="text" id="pName" required>
+      </label>
+      <label>Phone number
+        <input type="tel" id="pPhone" required>
+      </label>
+      <label>Delivery address
+        <textarea id="pAddress" rows="2"></textarea>
+      </label>
+      <button type="submit" class="primary">Save my details</button>
+      <p id="profileMsg" class="ok-text"></p>
+    </form>
 
-    <!-- Log in or create an account -->
-    <div id="authBox">
-      <div class="tabs">
-        <button class="tab active" id="showLogin" type="button">Log in</button>
-        <button class="tab" id="showSignup" type="button">Create account</button>
-      </div>
-
-      <form id="loginForm">
-        <label>Email
-          <input type="email" id="loginEmail" required>
-        </label>
-        <label>Password
-          <input type="password" id="loginPassword" required>
-        </label>
-        <p id="loginError" class="error-text"></p>
-        <button type="submit" class="primary">Log in</button>
-      </form>
-
-      <form id="signupForm" class="hidden">
-        <label>Full name
-          <input type="text" id="signupName" required>
-        </label>
-        <label>Phone number
-          <input type="tel" id="signupPhone" required>
-        </label>
-        <label>Email
-          <input type="email" id="signupEmail" required>
-        </label>
-        <label>Password (at least 6 characters)
-          <input type="password" id="signupPassword" minlength="6" required>
-        </label>
-        <p id="signupError" class="error-text"></p>
-        <button type="submit" class="primary">Create my account</button>
-      </form>
-    </div>
-
-    <!-- After logging in -->
-    <div id="accountBox" class="hidden">
-      <h2>My details</h2>
-      <p class="hint">These are filled in for you at checkout.</p>
-      <form id="profileForm">
-        <label>Full name
-          <input type="text" id="pName" required>
-        </label>
-        <label>Phone number
-          <input type="tel" id="pPhone" required>
-        </label>
-        <label>Delivery address
-          <textarea id="pAddress" rows="2"></textarea>
-        </label>
-        <button type="submit" class="primary">Save my details</button>
-        <p id="profileMsg" class="ok-text"></p>
-      </form>
-
-      <h2>My orders</h2>
-      <div id="orderList"></div>
-    </div>
-
+    <h2>My orders</h2>
+    <div id="orderList"></div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log in - Madalla</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Madalla Ice Products and Suya Spot</h1>
+    <div class="top-actions">
+      <a class="cart-btn" href="index.html">Back to shop</a>
+    </div>
+  </header>
+
+  <main class="narrow">
+    <h2>Welcome</h2>
+    <p id="needNotice" class="hint hidden">Please log in or create an account to place your order. Your cart is saved.</p>
+
+    <!-- Continue with Google (switched on later) -->
+    <button id="googleBtn" type="button" class="hidden"
+      style="display:none;width:100%;padding:12px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;margin:8px 0 14px;">
+      Continue with Google
+    </button>
+    <p id="orText" class="hint hidden" style="display:none;text-align:center;">or use your email</p>
+
+    <div class="tabs">
+      <button class="tab active" id="showLogin" type="button">Log in</button>
+      <button class="tab" id="showSignup" type="button">Create account</button>
+    </div>
+
+    <form id="loginForm">
+      <label>Email
+        <input type="email" id="loginEmail" required>
+      </label>
+      <label>Password
+        <input type="password" id="loginPassword" required>
+      </label>
+      <p id="loginError" class="error-text"></p>
+      <button type="submit" class="primary">Log in</button>
+    </form>
+
+    <form id="signupForm" class="hidden">
+      <label>Full name
+        <input type="text" id="signupName" required>
+      </label>
+      <label>Phone number
+        <input type="tel" id="signupPhone" required>
+      </label>
+      <label>Email
+        <input type="email" id="signupEmail" required>
+      </label>
+      <label>Password (at least 6 characters)
+        <input type="password" id="signupPassword" minlength="6" required>
+      </label>
+      <p id="signupError" class="error-text"></p>
+      <button type="submit" class="primary">Create my account</button>
+    </form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>
