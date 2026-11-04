@@ -520,6 +520,10 @@ const ORDER_STATUSES = {
   ]
 };
 
+function qtyText(item) {
+  return /kg/i.test(item.unit || '') ? item.quantity + ' kg' : String(item.quantity);
+}
+
 async function loadOrdersAdmin() {
   const list = document.getElementById('orderList');
 
@@ -559,8 +563,10 @@ async function loadOrdersAdmin() {
     ];
 
     order.order_items.forEach(function (item) {
-      lines.push(item.quantity + ' × ' + item.product_name + ' (' + formatPrice(item.unit_price) + ' ' + (item.unit || '') + ')');
+      lines.push(qtyText(item) + ' × ' + item.product_name + ' (' + formatPrice(item.unit_price) + ' ' + (item.unit || '') + ')');
     });
+
+    if (order.note) lines.push('Note: ' + order.note);
 
     lines.push('Delivery fee: ' + formatPrice(order.delivery_fee));
     lines.push('Total: ' + formatPrice(order.total));

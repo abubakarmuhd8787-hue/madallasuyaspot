@@ -22,32 +22,50 @@ function findProduct(id) {
   return products.find(function (p) { return p.id === Number(id); });
 }
 
+// Items sold "per kg" go up in half-kilo steps. Everything else goes up by 1.
+function isKg(product) {
+  return !!product && /kg/i.test(product.unit || '');
+}
+
+function stepFor(product) {
+  return isKg(product) ? 0.5 : 1;
+}
+
+function qtyLabel(product, quantity) {
+  return isKg(product) ? quantity + ' kg' : String(quantity);
+}
+
 function cartTotal() {
   let total = 0;
   for (const id in cart) {
     const product = findProduct(id);
     if (product && product.available) total += product.price * cart[id];
   }
-  return total;
+  return Math.round(total * 100) / 100;
 }
 
+// Counts the different items in the cart
 function cartCount() {
   let count = 0;
   for (const id in cart) {
     const product = findProduct(id);
-    if (product && product.available) count += cart[id];
+    if (product && product.available) count++;
   }
   return count;
 }
 
 function addToCart(id) {
-  cart[id] = (cart[id] || 0) + 1;
+  const product = findProduct(id);
+  cart[id] = cart[id] ? cart[id] + stepFor(product) : 1;
   saveCart();
   renderCart();
 }
 
-function changeQty(id, change) {
-  cart[id] = (cart[id] || 0) + change;
+// direction is +1 or -1
+function changeQty(id, direction) {
+  const product = findProduct(id);
+  const next = (cart[id] || 0) + direction * stepFor(product);
+  cart[id] = Math.round(next * 100) / 100;
   if (cart[id] <= 0) delete cart[id];
   saveCart();
   renderCart();
@@ -212,7 +230,7 @@ function renderCart() {
     minus.addEventListener('click', function () { changeQty(id, -1); });
 
     const number = document.createElement('span');
-    number.textContent = cart[id];
+    number.textContent = qtyLabel(product, cart[id]);
 
     const plus = document.createElement('button');
     plus.textContent = '+';
@@ -318,6 +336,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
   const customerName = document.getElementById('fullName').value.trim();
   const customerPhone = document.getElementById('phone').value.trim();
   const customerAddress = addressInput.value.trim();
+  const note = document.getElementById('orderNote').value.trim();
 
   // Only the product and the quantity are sent. The database works out the prices.
   // The lines are also kept to write the WhatsApp message.
@@ -327,7 +346,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     const product = findProduct(id);
     if (product && product.available) {
       items.push({ product_id: product.id, quantity: cart[id] });
-      messageLines.push('- ' + cart[id] + ' × ' + product.name +
+      messageLines.push('- ' + qtyLabel(product, cart[id]) + ' × ' + product.name +
         ' (' + formatPrice(product.price) + ' ' + product.unit + ')');
     }
   }
@@ -338,7 +357,8 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     p_fulfillment: selectedFulfillment(),
     p_address: isDelivery ? customerAddress : '',
     p_payment: document.querySelector('input[name="payment"]:checked').value,
-    p_items: items
+    p_items: items,
+    p_note: note
   });
 
   submitBtn.disabled = false;
@@ -361,6 +381,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     'Phone: ' + customerPhone + '\n' +
     (isDelivery ? 'Delivery to: ' + customerAddress : 'Pickup at the shop') + '\n' +
     'Items:\n' + messageLines.join('\n') + '\n' +
+    (note ? 'Note: ' + note + '\n' : '') +
     'Delivery fee: ' + formatPrice(fee) + '\n' +
     'Total: ' + formatPrice(total);
 

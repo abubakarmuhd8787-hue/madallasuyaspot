@@ -17,6 +17,10 @@ function formatPrice(amount) {
   return '₦' + Number(amount).toLocaleString('en-NG');
 }
 
+function qtyText(item) {
+  return /kg/i.test(item.unit || '') ? item.quantity + ' kg' : String(item.quantity);
+}
+
 function addLine(parent, text) {
   const p = document.createElement('p');
   p.textContent = text;
@@ -55,8 +59,10 @@ document.getElementById('trackForm').addEventListener('submit', async function (
     : 'Pickup at the shop');
 
   order.items.forEach(function (item) {
-    addLine(box, item.quantity + ' × ' + item.name + ' (' + formatPrice(item.unit_price) + ' ' + item.unit + ')');
+    addLine(box, qtyText(item) + ' × ' + item.name + ' (' + formatPrice(item.unit_price) + ' ' + item.unit + ')');
   });
+
+  if (order.note) addLine(box, 'Note: ' + order.note);
 
   addLine(box, 'Delivery fee: ' + formatPrice(order.delivery_fee));
   addLine(box, 'Total: ' + formatPrice(order.total));
