@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Madalla Ice Products and Suya Spot</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <img id="logo" class="logo hidden" alt="Madalla logo">
+      <h1>Madalla Ice Products and Suya Spot</h1>
+    </div>
+    <div class="top-actions">
+      <a class="cart-btn" href="track.html">Track order</a>
+      <button id="cartBtn" class="cart-btn">Cart (<span id="cartCount">0</span>)</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <p>Suya, shawarma, fresh chicken and fish. Delivery or pickup.</p>
+  </section>
+
+  <main>
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search for an item...">
+    </div>
+    <div id="chips" class="chips"></div>
+    <div id="menu"></div>
+  </main>
+
+  <footer id="shopFooter" class="shop-footer"></footer>
+
+  <!-- Cart panel -->
+  <aside id="cartPanel" class="cart-panel hidden">
+    <div class="panel-head">
+      <h2>Your cart</h2>
+      <button id="closeCart" class="close-btn">✕</button>
+    </div>
+    <div id="cartItems"></div>
+    <p class="total">Items total: <strong id="cartTotal">₦0</strong></p>
+    <button id="checkoutBtn" class="primary">Checkout</button>
+  </aside>
+
+  <!-- Checkout form -->
+  <div id="checkoutModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="panel-head">
+        <h2>Checkout</h2>
+        <button id="closeCheckout" class="close-btn">✕</button>
+      </div>
+
+      <form id="checkoutForm">
+        <label>Full name
+          <input type="text" id="fullName" required>
+        </label>
+
+        <label>Phone number
+          <input type="tel" id="phone" required>
+        </label>
+
+        <p class="label-text">How do you want your order?</p>
+        <label class="radio">
+          <input type="radio" name="fulfillment" value="delivery" checked> Delivery
+        </label>
+        <label class="radio">
+          <input type="radio" name="fulfillment" value="pickup"> Pickup at the shop
+        </label>
+
+        <label id="addressBox">Delivery address
+          <textarea id="address" rows="3"></textarea>
+        </label>
+
+        <p class="label-text">Payment</p>
+        <label class="radio">
+          <input type="radio" name="payment" value="pay_on_delivery" checked> Pay on delivery / at pickup
+        </label>
+        <label class="radio">
+          <input type="radio" name="payment" value="online" disabled> Pay online (card or transfer): coming soon
+        </label>
+
+        <div class="summary">
+          <p>Items: <span id="sumItems">₦0</span></p>
+          <p>Delivery fee: <span id="sumFee">₦0</span></p>
+          <p class="grand">Total: <span id="sumTotal">₦0</span></p>
+        </div>
+
+        <button type="submit" class="primary">Place order</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Order confirmation -->
+  <div id="doneModal" class="modal hidden">
+    <div class="modal-box">
+      <h2>Order placed ✅</h2>
+      <p id="doneText"></p>
+      <button id="doneBtn" class="primary">OK</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
