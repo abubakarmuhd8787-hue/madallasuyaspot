@@ -1,4 +1,6 @@
 let products = [];
+let areas = [];
+let riders = [];
 
 function flash(id, text) {
   const el = document.getElementById(id);
@@ -32,6 +34,8 @@ async function showDashboard() {
   createOrderAlert();
   await loadProductsAdmin();
   await loadSettingsAdmin();
+  await loadAreasAdmin();
+  await loadRidersAdmin();
   await loadOrdersAdmin();
   setInterval(checkNewOrders, 20000); // look for new orders every 20 seconds
 }
@@ -70,7 +74,7 @@ document.querySelectorAll('.tab').forEach(function (tab) {
   tab.addEventListener('click', function () {
     document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
     tab.classList.add('active');
-    ['productsTab', 'ordersTab', 'settingsTab'].forEach(function (id) {
+    ['productsTab', 'ordersTab', 'deliveryTab', 'settingsTab'].forEach(function (id) {
       document.getElementById(id).classList.add('hidden');
     });
     document.getElementById(tab.dataset.tab).classList.remove('hidden');
@@ -173,6 +177,18 @@ function makeInput(type, value, placeholder, onChange) {
   return input;
 }
 
+function makeCheck(label, checked, onChange) {
+  const checkLabel = document.createElement('label');
+  checkLabel.className = 'check';
+  const check = document.createElement('input');
+  check.type = 'checkbox';
+  check.checked = checked;
+  check.addEventListener('change', function () { onChange(check.checked); });
+  checkLabel.appendChild(check);
+  checkLabel.appendChild(document.createTextNode(label));
+  return checkLabel;
+}
+
 async function saveProductImage(product, url) {
   const { error } = await db
     .from('products')
@@ -267,15 +283,6 @@ function drawProducts() {
     const price = makeInput('number', product.price, 'Price', function (v) { product.price = Number(v) || 0; });
     price.className = 'small';
 
-    const checkLabel = document.createElement('label');
-    checkLabel.className = 'check';
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    check.checked = product.available;
-    check.addEventListener('change', function () { product.available = check.checked; });
-    checkLabel.appendChild(check);
-    checkLabel.appendChild(document.createTextNode('Available'));
-
     const del = document.createElement('button');
     del.className = 'danger small-btn';
     del.textContent = 'Delete';
@@ -293,7 +300,7 @@ function drawProducts() {
     row.appendChild(photoBox);
     row.appendChild(unit);
     row.appendChild(price);
-    row.appendChild(checkLabel);
+    row.appendChild(makeCheck('Available', product.available, function (v) { product.available = v; }));
     row.appendChild(del);
     list.appendChild(row);
   });
@@ -364,6 +371,193 @@ document.getElementById('addForm').addEventListener('submit', async function (ev
   } catch (e) {
     flash('addMsg', 'Could not add: ' + e.message);
   }
+});
+
+// ---------- DELIVERY AREAS ----------
+async function loadAreasAdmin() {
+  const { data, error } = await db
+    .from('delivery_areas')
+    .select('*')
+    .order('name');
+
+  if (error) {
+    document.getElementById('areaList').textContent = 'Could not load areas: ' + error.message;
+    return;
+  }
+
+  areas = data.map(function (row) {
+    return { id: row.id, name: row.name, fee: Number(row.fee), active: row.is_active };
+  });
+  drawAreas();
+}
+
+function drawAreas() {
+  const list = document.getElementById('areaList');
+  list.innerHTML = '';
+
+  if (areas.length === 0) {
+    list.textContent = 'No areas yet. The single delivery fee from Settings is used.';
+    return;
+  }
+
+  areas.forEach(function (area) {
+    const row = document.createElement('div');
+    row.className = 'admin-row';
+
+    const top = document.createElement('div');
+    top.className = 'row-top';
+    top.appendChild(makeInput('text', area.name, 'Area name', function (v) { area.name = v; }));
+    row.appendChild(top);
+
+    const fee = makeInput('number', area.fee, 'Fee', function (v) { area.fee = Number(v) || 0; });
+    fee.className = 'small';
+    row.appendChild(fee);
+
+    row.appendChild(makeCheck('Active', area.active, function (v) { area.active = v; }));
+
+    const del = document.createElement('button');
+    del.className = 'danger small-btn';
+    del.textContent = 'Delete';
+    del.addEventListener('click', async function () {
+      if (!confirm('Delete the area ' + area.name + '?')) return;
+      const { error } = await db.from('delivery_areas').delete().eq('id', area.id);
+      if (error) {
+        flash('areaMsg', 'Could not delete: ' + error.message);
+        return;
+      }
+      await loadAreasAdmin();
+    });
+    row.appendChild(del);
+
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('saveAreas').addEventListener('click', async function () {
+  const results = await Promise.all(areas.map(function (a) {
+    return db.from('delivery_areas').update({
+      name: a.name.trim(),
+      fee: a.fee,
+      is_active: a.active
+    }).eq('id', a.id);
+  }));
+
+  const failed = results.find(function (r) { return r.error; });
+  flash('areaMsg', failed ? 'Could not save: ' + failed.error.message : 'Areas saved.');
+});
+
+document.getElementById('areaForm').addEventListener('submit', async function (event) {
+  event.preventDefault();
+  const form = event.target;
+
+  const { error } = await db.from('delivery_areas').insert({
+    name: document.getElementById('newAreaName').value.trim(),
+    fee: Number(document.getElementById('newAreaFee').value) || 0
+  });
+
+  if (error) {
+    flash('areaMsg', 'Could not add: ' + error.message);
+    return;
+  }
+
+  form.reset();
+  flash('areaMsg', 'Area added.');
+  await loadAreasAdmin();
+});
+
+// ---------- RIDERS ----------
+async function loadRidersAdmin() {
+  const { data, error } = await db
+    .from('riders')
+    .select('*')
+    .order('name');
+
+  if (error) {
+    document.getElementById('riderList').textContent = 'Could not load riders: ' + error.message;
+    return;
+  }
+
+  riders = data.map(function (row) {
+    return { id: row.id, name: row.name, phone: row.phone, active: row.is_active };
+  });
+  drawRiders();
+}
+
+function drawRiders() {
+  const list = document.getElementById('riderList');
+  list.innerHTML = '';
+
+  if (riders.length === 0) {
+    list.textContent = 'No riders yet.';
+    return;
+  }
+
+  riders.forEach(function (rider) {
+    const row = document.createElement('div');
+    row.className = 'admin-row';
+
+    const top = document.createElement('div');
+    top.className = 'row-top';
+    top.appendChild(makeInput('text', rider.name, 'Rider name', function (v) { rider.name = v; }));
+    row.appendChild(top);
+
+    const phone = makeInput('text', rider.phone, 'Phone', function (v) { rider.phone = v; });
+    phone.className = 'small';
+    row.appendChild(phone);
+
+    row.appendChild(makeCheck('Active', rider.active, function (v) { rider.active = v; }));
+
+    const del = document.createElement('button');
+    del.className = 'danger small-btn';
+    del.textContent = 'Delete';
+    del.addEventListener('click', async function () {
+      if (!confirm('Delete the rider ' + rider.name + '?')) return;
+      const { error } = await db.from('riders').delete().eq('id', rider.id);
+      if (error) {
+        flash('riderMsg', 'Could not delete: ' + error.message);
+        return;
+      }
+      await loadRidersAdmin();
+      await loadOrdersAdmin();
+    });
+    row.appendChild(del);
+
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('saveRiders').addEventListener('click', async function () {
+  const results = await Promise.all(riders.map(function (r) {
+    return db.from('riders').update({
+      name: r.name.trim(),
+      phone: r.phone.trim(),
+      is_active: r.active
+    }).eq('id', r.id);
+  }));
+
+  const failed = results.find(function (r) { return r.error; });
+  flash('riderMsg', failed ? 'Could not save: ' + failed.error.message : 'Riders saved.');
+  if (!failed) loadOrdersAdmin();
+});
+
+document.getElementById('riderForm').addEventListener('submit', async function (event) {
+  event.preventDefault();
+  const form = event.target;
+
+  const { error } = await db.from('riders').insert({
+    name: document.getElementById('newRiderName').value.trim(),
+    phone: document.getElementById('newRiderPhone').value.trim()
+  });
+
+  if (error) {
+    flash('riderMsg', 'Could not add: ' + error.message);
+    return;
+  }
+
+  form.reset();
+  flash('riderMsg', 'Rider added.');
+  await loadRidersAdmin();
+  await loadOrdersAdmin();
 });
 
 // ---------- SETTINGS ----------
@@ -542,8 +736,32 @@ function qtyText(item) {
   return /kg/i.test(item.unit || '') ? item.quantity + ' kg' : String(item.quantity);
 }
 
+// Turns 08012345678 into 2348012345678 so WhatsApp can open it
+function toWaNumber(phone) {
+  let digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith('0')) digits = '234' + digits.slice(1);
+  return digits;
+}
+
+// The order, written as a WhatsApp message for the rider
+function riderMessage(order) {
+  const lines = order.order_items.map(function (item) {
+    return '- ' + qtyText(item) + ' × ' + item.product_name;
+  });
+
+  const unpaid = order.payment_status !== 'paid';
+
+  return 'Delivery order ' + order.order_number + '\n' +
+    'Customer: ' + order.customer_name + '\n' +
+    'Phone: ' + order.customer_phone + '\n' +
+    'Address: ' + order.delivery_address + (order.delivery_area ? ' (' + order.delivery_area + ')' : '') + '\n' +
+    'Items:\n' + lines.join('\n') + '\n' +
+    (order.note ? 'Note: ' + order.note + '\n' : '') +
+    (unpaid ? 'Collect cash: ' + formatPrice(order.total) : 'Already paid. Do not collect money.');
+}
+
 // A drop-down list that saves the new value to the order when changed
-function makeSelect(options, current, orderId, column) {
+function makeSelect(options, current, orderId, column, after) {
   const select = document.createElement('select');
   options.forEach(function (option) {
     const el = document.createElement('option');
@@ -555,13 +773,20 @@ function makeSelect(options, current, orderId, column) {
 
   select.addEventListener('change', async function () {
     const changes = {};
-    changes[column] = select.value;
+    if (column === 'rider_id') {
+      changes[column] = select.value === '' ? null : Number(select.value);
+    } else {
+      changes[column] = select.value;
+    }
+
     const { error } = await db.from('orders').update(changes).eq('id', orderId);
 
     if (error) {
       alert('Could not save the change: ' + error.message);
       loadOrdersAdmin();
+      return;
     }
+    if (after) after();
   });
 
   return select;
@@ -572,6 +797,16 @@ function addCaption(parent, text) {
   p.className = 'hint';
   p.textContent = text;
   parent.appendChild(p);
+}
+
+function riderOptions(order) {
+  const options = [['', 'No rider yet']];
+  riders.forEach(function (rider) {
+    if (rider.active || rider.id === order.rider_id) {
+      options.push([String(rider.id), rider.name + (rider.active ? '' : ' (not active)')]);
+    }
+  });
+  return options;
 }
 
 async function loadOrdersAdmin() {
@@ -607,7 +842,7 @@ async function loadOrdersAdmin() {
       new Date(order.created_at).toLocaleString('en-NG'),
       'Phone: ' + order.customer_phone,
       order.fulfillment_type === 'delivery'
-        ? 'Delivery to: ' + order.delivery_address
+        ? 'Delivery to: ' + order.delivery_address + (order.delivery_area ? ' (' + order.delivery_area + ')' : '')
         : 'Pickup at the shop',
       'Payment method: ' + (PAYMENT_METHODS[order.payment_method] || order.payment_method)
     ];
@@ -632,6 +867,26 @@ async function loadOrdersAdmin() {
 
     addCaption(box, 'Payment status');
     box.appendChild(makeSelect(PAYMENT_STATUSES, order.payment_status, order.id, 'payment_status'));
+
+    // Rider (delivery orders only)
+    if (order.fulfillment_type === 'delivery') {
+      addCaption(box, 'Rider');
+      box.appendChild(makeSelect(riderOptions(order), order.rider_id ? String(order.rider_id) : '', order.id, 'rider_id', loadOrdersAdmin));
+
+      const rider = riders.find(function (r) { return r.id === order.rider_id; });
+      if (rider && rider.phone) {
+        const link = document.createElement('a');
+        link.className = 'wa-btn';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'Message ' + rider.name + ' on WhatsApp';
+        link.href = 'https://wa.me/' + toWaNumber(rider.phone) + '?text=' + encodeURIComponent(riderMessage(order));
+        link.style.display = 'block';
+        link.style.textAlign = 'center';
+        link.style.marginTop = '10px';
+        box.appendChild(link);
+      }
+    }
 
     list.appendChild(box);
   });

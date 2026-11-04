@@ -2,7 +2,11 @@
 // readData, writeData, formatPrice and defaultSettings come from data.js
 // "db" (the database connection) comes from config.js
 let products = [];
+let areas = [];
 let settings = Object.assign({}, defaultSettings);
+
+// The logged-in customer's saved details (null when shopping as a guest)
+let customerProfile = null;
 
 // The cart is saved as { productId: quantity } so it survives a page refresh
 let cart = readData('madallaCart', {});
@@ -14,12 +18,41 @@ function saveCart() {
   writeData('madallaCart', cart);
 }
 
+function findProduct(id) {
+  return products.find(function (p) { return p.id === Number(id); });
+}
+
+// ---------- DELIVERY AREAS AND FEE ----------
+function selectedArea() {
+  const value = document.getElementById('areaSelect').value;
+  return areas.find(function (a) { return String(a.id) === value; });
+}
+
+// With delivery areas, the fee comes from the chosen area.
+// Without any areas, the single fee from Settings is used.
 function deliveryFee() {
+  if (areas.length) {
+    const area = selectedArea();
+    return area ? area.fee : 0;
+  }
   return Number(settings.deliveryFee) || 0;
 }
 
-function findProduct(id) {
-  return products.find(function (p) { return p.id === Number(id); });
+function renderAreaSelect() {
+  const select = document.getElementById('areaSelect');
+  select.innerHTML = '';
+
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = 'Choose your area...';
+  select.appendChild(first);
+
+  areas.forEach(function (area) {
+    const option = document.createElement('option');
+    option.value = area.id;
+    option.textContent = area.name + ' (' + formatPrice(area.fee) + ')';
+    select.appendChild(option);
+  });
 }
 
 // Items sold "per kg" go up in half-kilo steps. Everything else goes up by 1.
@@ -399,6 +432,8 @@ document.getElementById('closeCart').addEventListener('click', function () {
 const checkoutModal = document.getElementById('checkoutModal');
 const addressBox = document.getElementById('addressBox');
 const addressInput = document.getElementById('address');
+const areaBox = document.getElementById('areaBox');
+const areaSelect = document.getElementById('areaSelect');
 
 function selectedFulfillment() {
   return document.querySelector('input[name="fulfillment"]:checked').value;
@@ -453,6 +488,11 @@ function updateSummary() {
   addressBox.classList.toggle('hidden', !isDelivery);
   addressInput.required = isDelivery;
 
+  // The area list only shows for delivery, and only when the admin added areas
+  const needsArea = isDelivery && areas.length > 0;
+  areaBox.classList.toggle('hidden', !needsArea);
+  areaSelect.required = needsArea;
+
   document.getElementById('sumItems').textContent = formatPrice(cartTotal());
   document.getElementById('sumFee').textContent = formatPrice(fee);
   document.getElementById('sumTotal').textContent = formatPrice(total);
@@ -460,9 +500,22 @@ function updateSummary() {
   updatePaymentOptions(total);
 }
 
+// Fills in the customer's saved details (only into empty boxes)
+function prefillCheckout() {
+  if (!customerProfile) return;
+
+  const nameInput = document.getElementById('fullName');
+  const phoneInput = document.getElementById('phone');
+
+  if (!nameInput.value && customerProfile.full_name) nameInput.value = customerProfile.full_name;
+  if (!phoneInput.value && customerProfile.phone) phoneInput.value = customerProfile.phone;
+  if (!addressInput.value && customerProfile.address) addressInput.value = customerProfile.address;
+}
+
 document.getElementById('checkoutBtn').addEventListener('click', function () {
   cartPanel.classList.add('hidden');
   checkoutModal.classList.remove('hidden');
+  prefillCheckout();
   updateSummary();
 });
 
@@ -473,6 +526,8 @@ document.getElementById('closeCheckout').addEventListener('click', function () {
 document.querySelectorAll('input[name="fulfillment"], input[name="payment"]').forEach(function (radio) {
   radio.addEventListener('change', updateSummary);
 });
+
+areaSelect.addEventListener('change', updateSummary);
 
 // Writes the order as a WhatsApp message and adds a button that opens it
 function showWhatsAppButton(message) {
@@ -505,6 +560,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
 
   const isDelivery = selectedFulfillment() === 'delivery';
   const payment = selectedPayment();
+  const area = isDelivery && areas.length ? selectedArea() : null;
   const fee = isDelivery ? deliveryFee() : 0;
   const total = cartTotal() + fee;
   const customerName = document.getElementById('fullName').value.trim();
@@ -532,7 +588,8 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     p_address: isDelivery ? customerAddress : '',
     p_payment: payment,
     p_items: items,
-    p_note: note
+    p_note: note,
+    p_area: area ? area.name : ''
   });
 
   submitBtn.disabled = false;
@@ -554,14 +611,18 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
       ' and use ' + orderNumber + ' as the reference. Then send your payment proof on WhatsApp.';
   }
 
-  doneText += ' Keep your order number to follow your order on the Track order page.';
+  doneText += customerProfile
+    ? ' You can also find this order in My account.'
+    : ' Keep your order number to follow your order on the Track order page.';
   document.getElementById('doneText').textContent = doneText;
 
   const message =
     'New order ' + orderNumber + '\n' +
     'Name: ' + customerName + '\n' +
     'Phone: ' + customerPhone + '\n' +
-    (isDelivery ? 'Delivery to: ' + customerAddress : 'Pickup at the shop') + '\n' +
+    (isDelivery
+      ? 'Delivery to: ' + customerAddress + (area ? ' (' + area.name + ')' : '')
+      : 'Pickup at the shop') + '\n' +
     'Items:\n' + messageLines.join('\n') + '\n' +
     (note ? 'Note: ' + note + '\n' : '') +
     'Delivery fee: ' + formatPrice(fee) + '\n' +
@@ -643,6 +704,21 @@ async function loadProductsFromDb() {
   });
 }
 
+// ---------- LOAD DELIVERY AREAS FROM THE DATABASE ----------
+async function loadAreasFromDb() {
+  const { data } = await db
+    .from('delivery_areas')
+    .select('id, name, fee')
+    .eq('is_active', true)
+    .order('name');
+
+  if (!data) return [];
+
+  return data.map(function (row) {
+    return { id: row.id, name: row.name, fee: Number(row.fee) };
+  });
+}
+
 // ---------- LOAD SETTINGS FROM THE DATABASE ----------
 async function loadSettingsFromDb() {
   const { data } = await db.from('settings').select('*').eq('id', 1).maybeSingle();
@@ -661,15 +737,37 @@ async function loadSettingsFromDb() {
   };
 }
 
+// ---------- CUSTOMER LOGIN ----------
+// If the customer is logged in: change the top link to "My account",
+// and remember their saved details so checkout can fill them in.
+async function loadCustomer() {
+  const { data } = await db.auth.getSession();
+  if (!data.session) return;
+
+  document.getElementById('accountLink').textContent = 'My account';
+  document.getElementById('loginHint').classList.add('hidden');
+
+  const { data: profile } = await db
+    .from('profiles')
+    .select('full_name, phone, address')
+    .eq('id', data.session.user.id)
+    .maybeSingle();
+
+  customerProfile = profile || {};
+}
+
 // ---------- START ----------
 async function start() {
   products = await loadProductsFromDb();
   await loadSettingsFromDb();
+  areas = await loadAreasFromDb();
+  renderAreaSelect();
   renderLogo();
   renderChips();
   renderMenu();
   renderCart();
   renderFooter();
+  await loadCustomer();
 }
 
 start();

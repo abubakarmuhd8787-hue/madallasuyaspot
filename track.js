@@ -67,7 +67,7 @@ document.getElementById('trackForm').addEventListener('submit', async function (
 
   addLine(box, 'Name: ' + order.customer_name);
   addLine(box, order.fulfillment_type === 'delivery'
-    ? 'Delivery to: ' + order.delivery_address
+    ? 'Delivery to: ' + order.delivery_address + (order.delivery_area ? ' (' + order.delivery_area + ')' : '')
     : 'Pickup at the shop');
 
   order.items.forEach(function (item) {
@@ -80,6 +80,11 @@ document.getElementById('trackForm').addEventListener('submit', async function (
   addLine(box, 'Total: ' + formatPrice(order.total));
   addLine(box, 'Payment: ' + (PAYMENT_METHODS[order.payment_method] || order.payment_method) +
     ' · ' + (PAYMENT_STATUSES[order.payment_status] || order.payment_status));
+
+  if (order.rider_name) {
+    addLine(box, 'Your rider: ' + order.rider_name + (order.rider_phone ? ' (' + order.rider_phone + ')' : ''));
+  }
+
   result.appendChild(box);
 
   if (order.status === 'cancelled') {
@@ -106,3 +111,11 @@ document.getElementById('trackForm').addEventListener('submit', async function (
 
   result.appendChild(list);
 });
+
+// When opened from "My account" (track.html?order=MAD-123456), look the order up straight away
+(function openFromLink() {
+  const number = new URLSearchParams(location.search).get('order');
+  if (!number) return;
+  document.getElementById('orderNumber').value = number;
+  document.getElementById('trackForm').requestSubmit();
+})();

@@ -14,6 +14,7 @@
       <h1>Madalla Ice Products and Suya Spot</h1>
     </div>
     <div class="top-actions">
+      <a class="cart-btn" id="accountLink" href="account.html">Log in</a>
       <a class="cart-btn" href="track.html">Track order</a>
       <button id="cartBtn" class="cart-btn">Cart (<span id="cartCount">0</span>)</button>
     </div>
@@ -63,6 +64,8 @@
         <button id="closeCheckout" class="close-btn">✕</button>
       </div>
 
+      <p id="loginHint" class="hint">Have an account? <a href="account.html">Log in</a> to fill this in for you and keep your order history.</p>
+
       <form id="checkoutForm">
         <label>Full name
           <input type="text" id="fullName" required>
@@ -78,6 +81,10 @@
         </label>
         <label class="radio">
           <input type="radio" name="fulfillment" value="pickup"> Pickup at the shop
+        </label>
+
+        <label id="areaBox" class="hidden">Delivery area
+          <select id="areaSelect" style="display:block;width:100%;margin-top:6px;padding:10px;font-size:1rem;"></select>
         </label>
 
         <label id="addressBox">Delivery address

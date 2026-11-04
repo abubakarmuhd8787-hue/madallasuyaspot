@@ -34,9 +34,10 @@
 
     <!-- Dashboard -->
     <div id="dashboard" class="hidden">
-      <div class="tabs">
+      <div class="tabs" style="flex-wrap: wrap;">
         <button class="tab active" data-tab="productsTab">Products</button>
         <button class="tab" data-tab="ordersTab">Orders</button>
+        <button class="tab" data-tab="deliveryTab">Delivery</button>
         <button class="tab" data-tab="settingsTab">Settings</button>
       </div>
 
@@ -73,6 +74,42 @@
         <div id="orderList"></div>
       </section>
 
+      <!-- Delivery: areas and riders -->
+      <section id="deliveryTab" class="hidden">
+
+        <h2>Delivery areas</h2>
+        <p class="hint">Add the areas you deliver to, with a fee for each. Customers choose their area at checkout. If you add no areas, the single delivery fee from Settings is used for everyone.</p>
+        <div id="areaList"></div>
+        <button id="saveAreas" class="primary">Save areas</button>
+        <p id="areaMsg" class="ok-text"></p>
+
+        <form id="areaForm">
+          <label>New area name
+            <input type="text" id="newAreaName" required>
+          </label>
+          <label>Delivery fee (₦)
+            <input type="number" id="newAreaFee" min="0" required>
+          </label>
+          <button type="submit" class="primary">Add area</button>
+        </form>
+
+        <h2>Riders</h2>
+        <p class="hint">Add the people who deliver for you. On a delivery order you can pick the rider and send them the order on WhatsApp. Untick "Active" for a rider who is not working today.</p>
+        <div id="riderList"></div>
+        <button id="saveRiders" class="primary">Save riders</button>
+        <p id="riderMsg" class="ok-text"></p>
+
+        <form id="riderForm">
+          <label>New rider name
+            <input type="text" id="newRiderName" required>
+          </label>
+          <label>Rider phone number (for example 08012345678)
+            <input type="tel" id="newRiderPhone" required>
+          </label>
+          <button type="submit" class="primary">Add rider</button>
+        </form>
+      </section>
+
       <!-- Settings -->
       <section id="settingsTab" class="hidden">
 
@@ -86,9 +123,9 @@
         <p id="logoMsg" class="ok-text"></p>
 
         <h2>Shop details</h2>
-        <p class="hint">These details show in the shop footer and are used for the delivery fee. The bank details appear at checkout when a customer chooses bank transfer. Leave them empty to switch bank transfer off.</p>
+        <p class="hint">These details show in the shop footer. The delivery fee below is used only when you have no delivery areas. The bank details appear at checkout when a customer chooses bank transfer. Leave them empty to switch bank transfer off.</p>
         <form id="settingsForm">
-          <label>Delivery fee (₦)
+          <label>Delivery fee when there are no areas (₦)
             <input type="number" id="sDeliveryFee" min="0">
           </label>
           <label>Shop phone number
