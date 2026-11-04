@@ -95,6 +95,24 @@ h2 {
 .price { margin: 0 0 10px; font-weight: 700; color: var(--brand); font-size: 1.1rem; }
 .card button { margin-top: auto; }
 
+.card.clickable {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.card.clickable:hover,
+.card.clickable:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 78, 216, 0.18);
+  outline: none;
+}
+.card.clickable:active { transform: scale(0.98); }
+.tap-hint {
+  margin: auto 0 0;
+  color: var(--brand);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
 .photo {
   width: 100%;
   height: 130px;
@@ -237,6 +255,67 @@ button { font-family: inherit; }
   max-width: 440px;
   max-height: 92vh;
   overflow-y: auto;
+}
+
+/* Product popup */
+.product-box { position: relative; max-width: 380px; }
+.product-box .photo { height: 200px; border-radius: 10px; margin-bottom: 12px; }
+.product-box .photo.placeholder { font-size: 3.5rem; }
+.product-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.product-name { margin: 0 0 4px; font-size: 1.3rem; }
+.product-box .price { margin: 0 0 6px; }
+
+.qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 14px 0 4px;
+}
+.qty-row button {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--brand);
+  background: #fff;
+  color: var(--brand);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.qty-row span {
+  font-size: 1.2rem;
+  font-weight: 700;
+  min-width: 80px;
+  text-align: center;
+}
+
+/* "Added to cart" message */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: 90%;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: #15803d;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
 /* Forms */

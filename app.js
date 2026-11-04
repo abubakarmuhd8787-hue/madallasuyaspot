@@ -54,9 +54,9 @@ function cartCount() {
   return count;
 }
 
-function addToCart(id) {
-  const product = findProduct(id);
-  cart[id] = cart[id] ? cart[id] + stepFor(product) : 1;
+// Adds an amount of a product to the cart
+function addAmountToCart(id, amount) {
+  cart[id] = Math.round(((cart[id] || 0) + amount) * 100) / 100;
   saveCart();
   renderCart();
 }
@@ -70,6 +70,128 @@ function changeQty(id, direction) {
   saveCart();
   renderCart();
 }
+
+// ---------- "ADDED TO CART" MESSAGE ----------
+let toastTimer = null;
+
+function showToast(text) {
+  const toast = document.getElementById('toast');
+  toast.textContent = text;
+  toast.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () {
+    toast.classList.add('hidden');
+  }, 2200);
+}
+
+// ---------- PRODUCT POPUP ----------
+const productModal = document.getElementById('productModal');
+let popupProduct = null;
+let popupQty = 1;
+
+function openProduct(product) {
+  popupProduct = product;
+  popupQty = 1;
+  renderProductPopup();
+  productModal.classList.remove('hidden');
+}
+
+function closeProductPopup() {
+  productModal.classList.add('hidden');
+  popupProduct = null;
+}
+
+function renderProductPopup() {
+  const p = popupProduct;
+  const box = document.getElementById('productDetail');
+  box.innerHTML = '';
+
+  // Photo, or a coloured letter if the admin has not added one
+  if (p.image) {
+    const photo = document.createElement('img');
+    photo.className = 'photo';
+    photo.src = p.image;
+    photo.alt = p.name;
+    box.appendChild(photo);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'photo placeholder';
+    placeholder.textContent = p.name.charAt(0).toUpperCase();
+    box.appendChild(placeholder);
+  }
+
+  const name = document.createElement('h3');
+  name.className = 'product-name';
+  name.textContent = p.name;
+  box.appendChild(name);
+
+  const price = document.createElement('p');
+  price.className = 'price';
+  price.textContent = formatPrice(p.price) + ' ' + p.unit;
+  box.appendChild(price);
+
+  if (cart[p.id]) {
+    const inCart = document.createElement('p');
+    inCart.className = 'hint';
+    inCart.textContent = 'Already in your cart: ' + qtyLabel(p, cart[p.id]);
+    box.appendChild(inCart);
+  }
+
+  // Quantity buttons
+  const row = document.createElement('div');
+  row.className = 'qty-row';
+
+  const minus = document.createElement('button');
+  minus.type = 'button';
+  minus.textContent = '−';
+  minus.addEventListener('click', function () {
+    popupQty = Math.max(stepFor(p), Math.round((popupQty - stepFor(p)) * 100) / 100);
+    renderProductPopup();
+  });
+
+  const number = document.createElement('span');
+  number.textContent = qtyLabel(p, popupQty);
+
+  const plus = document.createElement('button');
+  plus.type = 'button';
+  plus.textContent = '+';
+  plus.addEventListener('click', function () {
+    popupQty = Math.min(100, Math.round((popupQty + stepFor(p)) * 100) / 100);
+    renderProductPopup();
+  });
+
+  row.appendChild(minus);
+  row.appendChild(number);
+  row.appendChild(plus);
+  box.appendChild(row);
+
+  const subtotal = document.createElement('p');
+  subtotal.className = 'total';
+  subtotal.textContent = 'Subtotal: ' + formatPrice(Math.round(p.price * popupQty * 100) / 100);
+  box.appendChild(subtotal);
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'primary';
+  addBtn.textContent = 'Add to cart';
+  addBtn.addEventListener('click', function () {
+    addAmountToCart(p.id, popupQty);
+    showToast('✓ Added to cart: ' + qtyLabel(p, popupQty) + ' × ' + p.name);
+    closeProductPopup();
+  });
+  box.appendChild(addBtn);
+}
+
+document.getElementById('closeProduct').addEventListener('click', closeProductPopup);
+
+// Tapping the dark area around the popup also closes it
+productModal.addEventListener('click', function (event) {
+  if (event.target === productModal) closeProductPopup();
+});
+
+document.addEventListener('keydown', function (event) {
+  if (event.key === 'Escape' && popupProduct) closeProductPopup();
+});
 
 // ---------- LOGO ----------
 function renderLogo() {
@@ -138,7 +260,7 @@ function renderMenu() {
     matches.forEach(function (p) {
       shown++;
       const card = document.createElement('div');
-      card.className = p.available ? 'card' : 'card soldout';
+      card.className = p.available ? 'card clickable' : 'card soldout';
 
       // Photo set by the admin. Without one, show a coloured letter instead.
       if (p.image) {
@@ -170,13 +292,20 @@ function renderMenu() {
         price.className = 'price';
         price.textContent = formatPrice(p.price);
 
-        const btn = document.createElement('button');
-        btn.className = 'primary add-btn';
-        btn.textContent = 'Add to cart';
-        btn.addEventListener('click', function () { addToCart(p.id); });
+        const hint = document.createElement('p');
+        hint.className = 'tap-hint';
+        hint.textContent = 'Tap to order';
 
         card.appendChild(price);
-        card.appendChild(btn);
+        card.appendChild(hint);
+
+        // Tapping the card (or pressing Enter on it) opens the popup
+        card.tabIndex = 0;
+        card.setAttribute('role', 'button');
+        card.addEventListener('click', function () { openProduct(p); });
+        card.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') openProduct(p);
+        });
       } else {
         const badge = document.createElement('p');
         badge.className = 'badge';

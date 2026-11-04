@@ -33,6 +33,17 @@
 
   <footer id="shopFooter" class="shop-footer"></footer>
 
+  <!-- Product popup: choose the quantity and add to cart -->
+  <div id="productModal" class="modal hidden">
+    <div class="modal-box product-box">
+      <button id="closeProduct" class="close-btn product-close" aria-label="Close">✕</button>
+      <div id="productDetail"></div>
+    </div>
+  </div>
+
+  <!-- "Added to cart" message -->
+  <div id="toast" class="toast hidden"></div>
+
   <!-- Cart panel -->
   <aside id="cartPanel" class="cart-panel hidden">
     <div class="panel-head">
