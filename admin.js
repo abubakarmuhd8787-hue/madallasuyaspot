@@ -392,6 +392,9 @@ async function loadSettingsAdmin() {
   document.getElementById('sWhatsapp').value = data.whatsapp;
   document.getElementById('sAddress').value = data.address;
   document.getElementById('sHours').value = data.hours;
+  document.getElementById('sBankName').value = data.bank_name || '';
+  document.getElementById('sAccountNumber').value = data.account_number || '';
+  document.getElementById('sAccountName').value = data.account_name || '';
   showLogoPreview(data.logo_url);
 }
 
@@ -403,7 +406,10 @@ document.getElementById('settingsForm').addEventListener('submit', async functio
     phone: document.getElementById('sPhone').value.trim(),
     whatsapp: document.getElementById('sWhatsapp').value.trim(),
     address: document.getElementById('sAddress').value.trim(),
-    hours: document.getElementById('sHours').value.trim()
+    hours: document.getElementById('sHours').value.trim(),
+    bank_name: document.getElementById('sBankName').value.trim(),
+    account_number: document.getElementById('sAccountNumber').value.trim(),
+    account_name: document.getElementById('sAccountName').value.trim()
   }).eq('id', 1);
 
   flash('settingsMsg', error ? 'Could not save: ' + error.message : 'Settings saved.');
@@ -520,8 +526,52 @@ const ORDER_STATUSES = {
   ]
 };
 
+const PAYMENT_STATUSES = [
+  ['pending', 'Not paid yet'],
+  ['paid', 'Paid'],
+  ['failed', 'Failed']
+];
+
+const PAYMENT_METHODS = {
+  pay_on_delivery: 'Pay on delivery / at pickup',
+  transfer: 'Bank transfer',
+  online: 'Online'
+};
+
 function qtyText(item) {
   return /kg/i.test(item.unit || '') ? item.quantity + ' kg' : String(item.quantity);
+}
+
+// A drop-down list that saves the new value to the order when changed
+function makeSelect(options, current, orderId, column) {
+  const select = document.createElement('select');
+  options.forEach(function (option) {
+    const el = document.createElement('option');
+    el.value = option[0];
+    el.textContent = option[1];
+    if (option[0] === current) el.selected = true;
+    select.appendChild(el);
+  });
+
+  select.addEventListener('change', async function () {
+    const changes = {};
+    changes[column] = select.value;
+    const { error } = await db.from('orders').update(changes).eq('id', orderId);
+
+    if (error) {
+      alert('Could not save the change: ' + error.message);
+      loadOrdersAdmin();
+    }
+  });
+
+  return select;
+}
+
+function addCaption(parent, text) {
+  const p = document.createElement('p');
+  p.className = 'hint';
+  p.textContent = text;
+  parent.appendChild(p);
 }
 
 async function loadOrdersAdmin() {
@@ -559,7 +609,7 @@ async function loadOrdersAdmin() {
       order.fulfillment_type === 'delivery'
         ? 'Delivery to: ' + order.delivery_address
         : 'Pickup at the shop',
-      'Payment: ' + (order.payment_method === 'online' ? 'Online' : 'Pay on delivery / at pickup')
+      'Payment method: ' + (PAYMENT_METHODS[order.payment_method] || order.payment_method)
     ];
 
     order.order_items.forEach(function (item) {
@@ -577,28 +627,12 @@ async function loadOrdersAdmin() {
       box.appendChild(p);
     });
 
-    const select = document.createElement('select');
-    ORDER_STATUSES[order.fulfillment_type].forEach(function (status) {
-      const option = document.createElement('option');
-      option.value = status[0];
-      option.textContent = status[1];
-      if (status[0] === order.status) option.selected = true;
-      select.appendChild(option);
-    });
+    addCaption(box, 'Order status');
+    box.appendChild(makeSelect(ORDER_STATUSES[order.fulfillment_type], order.status, order.id, 'status'));
 
-    select.addEventListener('change', async function () {
-      const { error } = await db
-        .from('orders')
-        .update({ status: select.value })
-        .eq('id', order.id);
+    addCaption(box, 'Payment status');
+    box.appendChild(makeSelect(PAYMENT_STATUSES, order.payment_status, order.id, 'payment_status'));
 
-      if (error) {
-        alert('Could not change the status: ' + error.message);
-        loadOrdersAdmin();
-      }
-    });
-
-    box.appendChild(select);
     list.appendChild(box);
   });
 }

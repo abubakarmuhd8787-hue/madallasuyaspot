@@ -81,9 +81,10 @@
         <label class="radio">
           <input type="radio" name="payment" value="pay_on_delivery" checked> Pay on delivery / at pickup
         </label>
-        <label class="radio">
-          <input type="radio" name="payment" value="online" disabled> Pay online (card or transfer): coming soon
+        <label class="radio hidden" id="transferOption">
+          <input type="radio" name="payment" value="transfer"> Pay by bank transfer
         </label>
+        <div id="bankBox" class="summary hidden"></div>
 
         <div class="summary">
           <p>Items: <span id="sumItems">₦0</span></p>

@@ -275,16 +275,60 @@ function selectedFulfillment() {
   return document.querySelector('input[name="fulfillment"]:checked').value;
 }
 
+function selectedPayment() {
+  return document.querySelector('input[name="payment"]:checked').value;
+}
+
+function hasBankDetails() {
+  return !!(settings.accountNumber && settings.bankName);
+}
+
+function addBankLine(box, label, value) {
+  const p = document.createElement('p');
+  const left = document.createElement('span');
+  left.textContent = label;
+  const right = document.createElement('strong');
+  right.textContent = value;
+  p.appendChild(left);
+  p.appendChild(right);
+  box.appendChild(p);
+}
+
+// Shows the bank transfer option only when the admin has saved bank details
+function updatePaymentOptions(total) {
+  const option = document.getElementById('transferOption');
+  const box = document.getElementById('bankBox');
+
+  option.classList.toggle('hidden', !hasBankDetails());
+  box.innerHTML = '';
+
+  if (hasBankDetails() && selectedPayment() === 'transfer') {
+    box.classList.remove('hidden');
+    addBankLine(box, 'Bank', settings.bankName);
+    addBankLine(box, 'Account number', settings.accountNumber);
+    addBankLine(box, 'Account name', settings.accountName);
+    addBankLine(box, 'Amount to pay', formatPrice(total));
+    const hint = document.createElement('p');
+    hint.textContent = 'Place your order first. Then transfer and use your order number as the reference.';
+    box.appendChild(hint);
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
 function updateSummary() {
   const isDelivery = selectedFulfillment() === 'delivery';
   const fee = isDelivery ? deliveryFee() : 0;
+  const total = cartTotal() + fee;
 
   addressBox.classList.toggle('hidden', !isDelivery);
   addressInput.required = isDelivery;
 
   document.getElementById('sumItems').textContent = formatPrice(cartTotal());
   document.getElementById('sumFee').textContent = formatPrice(fee);
-  document.getElementById('sumTotal').textContent = formatPrice(cartTotal() + fee);
+  document.getElementById('sumTotal').textContent = formatPrice(total);
+
+  updatePaymentOptions(total);
 }
 
 document.getElementById('checkoutBtn').addEventListener('click', function () {
@@ -297,7 +341,7 @@ document.getElementById('closeCheckout').addEventListener('click', function () {
   checkoutModal.classList.add('hidden');
 });
 
-document.querySelectorAll('input[name="fulfillment"]').forEach(function (radio) {
+document.querySelectorAll('input[name="fulfillment"], input[name="payment"]').forEach(function (radio) {
   radio.addEventListener('change', updateSummary);
 });
 
@@ -331,6 +375,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
   submitBtn.textContent = 'Placing order...';
 
   const isDelivery = selectedFulfillment() === 'delivery';
+  const payment = selectedPayment();
   const fee = isDelivery ? deliveryFee() : 0;
   const total = cartTotal() + fee;
   const customerName = document.getElementById('fullName').value.trim();
@@ -356,7 +401,7 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     p_phone: customerPhone,
     p_fulfillment: selectedFulfillment(),
     p_address: isDelivery ? customerAddress : '',
-    p_payment: document.querySelector('input[name="payment"]:checked').value,
+    p_payment: payment,
     p_items: items,
     p_note: note
   });
@@ -369,11 +414,19 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     return;
   }
 
-  document.getElementById('doneText').textContent =
+  let doneText =
     'Thank you, ' + customerName + '! Your order number is ' + orderNumber +
     '. Total: ' + formatPrice(total) + '. ' +
-    (isDelivery ? 'We will deliver to your address.' : 'Please pick it up at the shop.') +
-    ' Keep your order number to follow your order on the Track order page.';
+    (isDelivery ? 'We will deliver to your address.' : 'Please pick it up at the shop.');
+
+  if (payment === 'transfer') {
+    doneText += ' Please transfer ' + formatPrice(total) + ' to ' + settings.bankName +
+      ', account ' + settings.accountNumber + ' (' + settings.accountName + ')' +
+      ' and use ' + orderNumber + ' as the reference. Then send your payment proof on WhatsApp.';
+  }
+
+  doneText += ' Keep your order number to follow your order on the Track order page.';
+  document.getElementById('doneText').textContent = doneText;
 
   const message =
     'New order ' + orderNumber + '\n' +
@@ -383,7 +436,10 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     'Items:\n' + messageLines.join('\n') + '\n' +
     (note ? 'Note: ' + note + '\n' : '') +
     'Delivery fee: ' + formatPrice(fee) + '\n' +
-    'Total: ' + formatPrice(total);
+    'Total: ' + formatPrice(total) + '\n' +
+    'Payment: ' + (payment === 'transfer'
+      ? 'Bank transfer (I will send my payment proof)'
+      : 'Pay on delivery / at pickup');
 
   showWhatsAppButton(message);
 
@@ -469,7 +525,10 @@ async function loadSettingsFromDb() {
     whatsapp: data.whatsapp,
     address: data.address,
     hours: data.hours,
-    logoUrl: data.logo_url || ''
+    logoUrl: data.logo_url || '',
+    bankName: data.bank_name || '',
+    accountNumber: data.account_number || '',
+    accountName: data.account_name || ''
   };
 }
 

@@ -13,6 +13,18 @@ const STEPS = {
   ]
 };
 
+const PAYMENT_METHODS = {
+  pay_on_delivery: 'Pay on delivery / at pickup',
+  transfer: 'Bank transfer',
+  online: 'Online'
+};
+
+const PAYMENT_STATUSES = {
+  pending: 'Not paid yet',
+  paid: 'Paid',
+  failed: 'Failed'
+};
+
 function formatPrice(amount) {
   return '₦' + Number(amount).toLocaleString('en-NG');
 }
@@ -66,6 +78,8 @@ document.getElementById('trackForm').addEventListener('submit', async function (
 
   addLine(box, 'Delivery fee: ' + formatPrice(order.delivery_fee));
   addLine(box, 'Total: ' + formatPrice(order.total));
+  addLine(box, 'Payment: ' + (PAYMENT_METHODS[order.payment_method] || order.payment_method) +
+    ' · ' + (PAYMENT_STATUSES[order.payment_status] || order.payment_status));
   result.appendChild(box);
 
   if (order.status === 'cancelled') {

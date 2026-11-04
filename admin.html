@@ -86,7 +86,7 @@
         <p id="logoMsg" class="ok-text"></p>
 
         <h2>Shop details</h2>
-        <p class="hint">These details show in the shop footer and are used for the delivery fee.</p>
+        <p class="hint">These details show in the shop footer and are used for the delivery fee. The bank details appear at checkout when a customer chooses bank transfer. Leave them empty to switch bank transfer off.</p>
         <form id="settingsForm">
           <label>Delivery fee (₦)
             <input type="number" id="sDeliveryFee" min="0">
@@ -103,6 +103,18 @@
           <label>Opening hours (for example: Mon to Sat, 9am to 9pm)
             <input type="text" id="sHours">
           </label>
+
+          <h2>Bank transfer details</h2>
+          <label>Bank name
+            <input type="text" id="sBankName">
+          </label>
+          <label>Account number
+            <input type="text" id="sAccountNumber">
+          </label>
+          <label>Account name
+            <input type="text" id="sAccountName">
+          </label>
+
           <button type="submit" class="primary">Save settings</button>
           <p id="settingsMsg" class="ok-text"></p>
         </form>
