@@ -283,6 +283,28 @@ document.querySelectorAll('input[name="fulfillment"]').forEach(function (radio) 
   radio.addEventListener('change', updateSummary);
 });
 
+// Writes the order as a WhatsApp message and adds a button that opens it
+function showWhatsAppButton(message) {
+  const old = document.getElementById('waOrderBtn');
+  if (old) old.remove();
+
+  const digits = String(settings.whatsapp).replace(/\D/g, '');
+  if (!digits) return;
+
+  const link = document.createElement('a');
+  link.id = 'waOrderBtn';
+  link.className = 'wa-btn';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = 'Send my order on WhatsApp';
+  link.href = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message);
+  link.style.display = 'block';
+  link.style.textAlign = 'center';
+  link.style.margin = '0 0 12px';
+
+  document.getElementById('doneText').after(link);
+}
+
 document.getElementById('checkoutForm').addEventListener('submit', async function (event) {
   event.preventDefault(); // stop the page from reloading
 
@@ -294,21 +316,27 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
   const fee = isDelivery ? deliveryFee() : 0;
   const total = cartTotal() + fee;
   const customerName = document.getElementById('fullName').value.trim();
+  const customerPhone = document.getElementById('phone').value.trim();
+  const customerAddress = addressInput.value.trim();
 
   // Only the product and the quantity are sent. The database works out the prices.
+  // The lines are also kept to write the WhatsApp message.
   const items = [];
+  const messageLines = [];
   for (const id in cart) {
     const product = findProduct(id);
     if (product && product.available) {
       items.push({ product_id: product.id, quantity: cart[id] });
+      messageLines.push('- ' + cart[id] + ' × ' + product.name +
+        ' (' + formatPrice(product.price) + ' ' + product.unit + ')');
     }
   }
 
   const { data: orderNumber, error } = await db.rpc('place_order', {
     p_name: customerName,
-    p_phone: document.getElementById('phone').value.trim(),
+    p_phone: customerPhone,
     p_fulfillment: selectedFulfillment(),
-    p_address: isDelivery ? addressInput.value.trim() : '',
+    p_address: isDelivery ? customerAddress : '',
     p_payment: document.querySelector('input[name="payment"]:checked').value,
     p_items: items
   });
@@ -326,6 +354,17 @@ document.getElementById('checkoutForm').addEventListener('submit', async functio
     '. Total: ' + formatPrice(total) + '. ' +
     (isDelivery ? 'We will deliver to your address.' : 'Please pick it up at the shop.') +
     ' Keep your order number to follow your order on the Track order page.';
+
+  const message =
+    'New order ' + orderNumber + '\n' +
+    'Name: ' + customerName + '\n' +
+    'Phone: ' + customerPhone + '\n' +
+    (isDelivery ? 'Delivery to: ' + customerAddress : 'Pickup at the shop') + '\n' +
+    'Items:\n' + messageLines.join('\n') + '\n' +
+    'Delivery fee: ' + formatPrice(fee) + '\n' +
+    'Total: ' + formatPrice(total);
+
+  showWhatsAppButton(message);
 
   cart = {};
   saveCart();

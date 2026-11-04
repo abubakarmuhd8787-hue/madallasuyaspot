@@ -20,13 +20,20 @@ async function isAdmin(userId) {
   return !!data && data.role === 'admin';
 }
 
+let dashboardStarted = false;
+
 async function showDashboard() {
+  if (dashboardStarted) return;
+  dashboardStarted = true;
+
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   logoutBtn.classList.remove('hidden');
+  createOrderAlert();
   await loadProductsAdmin();
   await loadSettingsAdmin();
   await loadOrdersAdmin();
+  setInterval(checkNewOrders, 20000); // look for new orders every 20 seconds
 }
 
 document.getElementById('loginForm').addEventListener('submit', async function (event) {
@@ -67,6 +74,8 @@ document.querySelectorAll('.tab').forEach(function (tab) {
       document.getElementById(id).classList.add('hidden');
     });
     document.getElementById(tab.dataset.tab).classList.remove('hidden');
+
+    if (tab.dataset.tab === 'ordersTab') clearOrderAlert();
   });
 });
 
@@ -427,6 +436,72 @@ document.getElementById('removeLogo').addEventListener('click', async function (
   flash('logoMsg', 'Logo removed.');
 });
 
+// ---------- NEW ORDER ALERTS ----------
+const PAGE_TITLE = document.title;
+let lastOrderId = null;
+let alertBanner = null;
+
+function beep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.25;
+    osc.start();
+    setTimeout(function () { osc.stop(); ctx.close(); }, 700);
+  } catch (e) {}
+}
+
+function createOrderAlert() {
+  alertBanner = document.createElement('div');
+  alertBanner.className = 'hidden';
+  alertBanner.style.cssText =
+    'background:#1d4ed8;color:#fff;padding:12px;border-radius:8px;' +
+    'margin:12px 0;font-weight:700;text-align:center;cursor:pointer;';
+  alertBanner.textContent = '🔔 New order received. Tap to view.';
+  alertBanner.addEventListener('click', function () {
+    document.querySelector('.tab[data-tab="ordersTab"]').click();
+  });
+  dashboard.insertBefore(alertBanner, dashboard.firstChild);
+}
+
+function showOrderAlert() {
+  alertBanner.classList.remove('hidden');
+  document.title = '🔔 New order! - Madalla';
+  beep();
+}
+
+function clearOrderAlert() {
+  if (alertBanner) alertBanner.classList.add('hidden');
+  document.title = PAGE_TITLE;
+}
+
+window.addEventListener('focus', function () {
+  document.title = alertBanner && !alertBanner.classList.contains('hidden')
+    ? '🔔 New order! - Madalla'
+    : PAGE_TITLE;
+});
+
+async function checkNewOrders() {
+  const { data } = await db
+    .from('orders')
+    .select('id')
+    .order('id', { ascending: false })
+    .limit(1);
+
+  if (!data) return;
+
+  const newest = data.length ? data[0].id : 0;
+  if (lastOrderId !== null && newest > lastOrderId) {
+    await loadOrdersAdmin();
+    showOrderAlert();
+  }
+}
+
 // ---------- ORDERS ----------
 const ORDER_STATUSES = {
   delivery: [
@@ -458,6 +533,7 @@ async function loadOrdersAdmin() {
     return;
   }
 
+  lastOrderId = data.length ? data[0].id : 0;
   list.innerHTML = '';
 
   if (data.length === 0) {
