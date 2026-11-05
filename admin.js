@@ -2,6 +2,9 @@ let products = [];
 let areas = [];
 let riders = [];
 
+// The public key for push notifications (safe to be here)
+const VAPID_PUBLIC_KEY = 'BNdEBxyV0I09jkEqH1yjEu77ivbyc6z5_diG41E5pBUtaGNgySUT1dzw8p-dTYwCTlXkfqR1fRuN3aH_0K1NB9Q';
+
 function flash(id, text) {
   const el = document.getElementById(id);
   el.textContent = text;
@@ -37,7 +40,13 @@ async function showDashboard() {
   await loadAreasAdmin();
   await loadRidersAdmin();
   await loadOrdersAdmin();
+  refreshPushStatus();
   setInterval(checkNewOrders, 20000); // look for new orders every 20 seconds
+
+  // Opened from a notification: go straight to the Orders tab
+  if (new URLSearchParams(location.search).get('tab') === 'orders') {
+    document.querySelector('.tab[data-tab="ordersTab"]').click();
+  }
 }
 
 document.getElementById('loginForm').addEventListener('submit', async function (event) {
@@ -81,6 +90,120 @@ document.querySelectorAll('.tab').forEach(function (tab) {
 
     if (tab.dataset.tab === 'ordersTab') clearOrderAlert();
   });
+});
+
+// ---------- PHONE NOTIFICATIONS ----------
+const pushOnBtn = document.getElementById('pushOn');
+const pushOffBtn = document.getElementById('pushOff');
+
+function pushSupported() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+// Turns the public key into the form the browser needs
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+async function currentSubscription() {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return null;
+  return reg.pushManager.getSubscription();
+}
+
+async function refreshPushStatus() {
+  const status = document.getElementById('pushStatus');
+
+  if (!pushSupported()) {
+    status.textContent = 'This browser cannot show push notifications. On an iPhone, add this site to your Home Screen (Share > Add to Home Screen) and open it from there.';
+    pushOnBtn.classList.add('hidden');
+    pushOffBtn.classList.add('hidden');
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    status.textContent = 'Notifications are blocked for this site. Allow them in your browser settings (tap the lock icon next to the address), then reload this page.';
+    pushOnBtn.classList.add('hidden');
+    pushOffBtn.classList.add('hidden');
+    return;
+  }
+
+  const sub = await currentSubscription();
+
+  if (sub && Notification.permission === 'granted') {
+    status.textContent = 'Notifications are ON for this device. You will be alerted for every new order, even when this page is closed.';
+    pushOnBtn.classList.add('hidden');
+    pushOffBtn.classList.remove('hidden');
+  } else {
+    status.textContent = 'Notifications are OFF on this device. Turn them on to be alerted about new orders even when this page is closed.';
+    pushOnBtn.classList.remove('hidden');
+    pushOffBtn.classList.add('hidden');
+  }
+}
+
+async function enablePush() {
+  const registration = await navigator.serviceWorker.register('sw.js');
+  await navigator.serviceWorker.ready;
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    throw new Error('You did not allow notifications.');
+  }
+
+  let sub = await registration.pushManager.getSubscription();
+  if (!sub) {
+    sub = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+  }
+
+  const json = sub.toJSON();
+  const { data } = await db.auth.getSession();
+
+  const { error } = await db.from('push_subscriptions').upsert({
+    endpoint: json.endpoint,
+    p256dh: json.keys.p256dh,
+    auth: json.keys.auth,
+    user_id: data.session.user.id
+  }, { onConflict: 'endpoint' });
+
+  if (error) throw error;
+}
+
+async function disablePush() {
+  const sub = await currentSubscription();
+  if (!sub) return;
+
+  await db.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+  await sub.unsubscribe();
+}
+
+pushOnBtn.addEventListener('click', async function () {
+  pushOnBtn.disabled = true;
+  try {
+    await enablePush();
+    flash('pushMsg', 'Notifications are on.');
+  } catch (e) {
+    flash('pushMsg', 'Could not turn on notifications: ' + e.message);
+  }
+  pushOnBtn.disabled = false;
+  refreshPushStatus();
+});
+
+pushOffBtn.addEventListener('click', async function () {
+  try {
+    await disablePush();
+    flash('pushMsg', 'Notifications are off on this device.');
+  } catch (e) {
+    flash('pushMsg', 'Could not turn off: ' + e.message);
+  }
+  refreshPushStatus();
 });
 
 // ---------- IMAGE UPLOAD ----------
@@ -636,7 +759,7 @@ document.getElementById('removeLogo').addEventListener('click', async function (
   flash('logoMsg', 'Logo removed.');
 });
 
-// ---------- NEW ORDER ALERTS ----------
+// ---------- NEW ORDER ALERTS (while this page is open) ----------
 const PAGE_TITLE = document.title;
 let lastOrderId = null;
 let alertBanner = null;
