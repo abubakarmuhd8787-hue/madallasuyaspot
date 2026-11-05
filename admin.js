@@ -701,6 +701,23 @@ function showLogoPreview(url) {
   }
 }
 
+function showHeroPreview(url) {
+  const preview = document.getElementById('heroPreview');
+  const none = document.getElementById('heroNone');
+  const removeBtn = document.getElementById('removeHero');
+
+  if (url) {
+    preview.src = url;
+    preview.classList.remove('hidden');
+    none.classList.add('hidden');
+    removeBtn.classList.remove('hidden');
+  } else {
+    preview.classList.add('hidden');
+    none.classList.remove('hidden');
+    removeBtn.classList.add('hidden');
+  }
+}
+
 async function loadSettingsAdmin() {
   const { data } = await db.from('settings').select('*').eq('id', 1).maybeSingle();
   if (!data) return;
@@ -713,6 +730,7 @@ async function loadSettingsAdmin() {
   document.getElementById('sAccountNumber').value = data.account_number || '';
   document.getElementById('sAccountName').value = data.account_name || '';
   showLogoPreview(data.logo_url);
+  showHeroPreview(data.hero_image_url);
 }
 
 document.getElementById('settingsForm').addEventListener('submit', async function (event) {
@@ -757,6 +775,34 @@ document.getElementById('removeLogo').addEventListener('click', async function (
   }
   showLogoPreview('');
   flash('logoMsg', 'Logo removed.');
+});
+
+// Banner photo for the top of the shop page
+document.getElementById('heroFile').addEventListener('change', async function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  flash('heroMsg', 'Uploading banner photo...');
+  try {
+    const url = await uploadImage(file, 'banner', 1600, 'image/jpeg');
+    const { error } = await db.from('settings').update({ hero_image_url: url }).eq('id', 1);
+    if (error) throw error;
+    showHeroPreview(url);
+    flash('heroMsg', 'Banner photo saved. The shop now shows it.');
+  } catch (e) {
+    flash('heroMsg', 'Could not upload: ' + e.message);
+  }
+  event.target.value = '';
+});
+
+document.getElementById('removeHero').addEventListener('click', async function () {
+  const { error } = await db.from('settings').update({ hero_image_url: '' }).eq('id', 1);
+  if (error) {
+    flash('heroMsg', 'Could not remove: ' + error.message);
+    return;
+  }
+  showHeroPreview('');
+  flash('heroMsg', 'Banner photo removed.');
 });
 
 // ---------- NEW ORDER ALERTS (while this page is open) ----------

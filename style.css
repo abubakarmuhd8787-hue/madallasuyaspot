@@ -52,18 +52,40 @@ body {
   padding: 8px 14px;
   border-radius: 999px;
   font-weight: 700;
+  font-size: 1rem;
+  font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
 }
 a.cart-btn { text-decoration: none; display: inline-block; }
 
 .hero {
-  background: var(--brand);
+  background-color: var(--brand);
+  /* Soft dotted pattern, shown until a banner photo is uploaded */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1.5px, transparent 1.5px);
+  background-size: 22px 22px;
   color: #fff;
   text-align: center;
   padding: 28px 16px;
 }
 .hero p { margin: 0; font-size: 1.1rem; }
+
+/* With a banner photo from Admin > Settings */
+.hero.has-photo {
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 230px;
+  padding: 50px 16px;
+}
+.hero.has-photo p {
+  font-size: 1.4rem;
+  font-weight: 700;
+  max-width: 560px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
 
 /* Products */
 main { max-width: 960px; margin: 0 auto; padding: 0 16px 40px; }
@@ -321,6 +343,7 @@ button { font-family: inherit; }
 /* Forms */
 form label { display: block; margin: 12px 0; font-weight: 600; }
 form input[type="text"],
+form input[type="email"],
 form input[type="tel"],
 form input[type="password"],
 form input[type="number"],
@@ -501,4 +524,33 @@ select {
   text-decoration: none;
   border-radius: 999px;
   font-weight: 700;
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .topbar > h1 { flex: 1 1 100%; }
+  .brand { flex: 1 1 100%; }
+  .brand h1 { font-size: 1rem; line-height: 1.25; }
+  .logo { height: 44px; flex-shrink: 0; }
+
+  .top-actions { flex: 1 1 100%; gap: 6px; }
+  .top-actions .cart-btn {
+    flex: 1 1 0;
+    padding: 9px 6px;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .hero { padding: 20px 16px; }
+  .hero p { font-size: 1rem; }
+  .hero.has-photo { min-height: 190px; padding: 36px 16px; }
+  .hero.has-photo p { font-size: 1.2rem; }
+
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .photo { height: 110px; }
 }

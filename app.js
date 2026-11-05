@@ -265,6 +265,22 @@ function renderLogo() {
   }
 }
 
+// ---------- BANNER PHOTO (set in Admin > Settings) ----------
+function renderHero() {
+  const hero = document.querySelector('.hero');
+  if (!hero) return;
+
+  if (settings.heroUrl) {
+    // A blue layer over the photo keeps the white text easy to read
+    hero.style.backgroundImage =
+      'linear-gradient(rgba(30, 58, 138, 0.72), rgba(29, 78, 216, 0.6)), url("' + settings.heroUrl + '")';
+    hero.classList.add('has-photo');
+  } else {
+    hero.style.backgroundImage = '';
+    hero.classList.remove('has-photo');
+  }
+}
+
 // ---------- CATEGORY BUTTONS ----------
 function categoryNames() {
   const names = [];
@@ -776,6 +792,7 @@ async function loadSettingsFromDb() {
     address: data.address,
     hours: data.hours,
     logoUrl: data.logo_url || '',
+    heroUrl: data.hero_image_url || '',
     bankName: data.bank_name || '',
     accountNumber: data.account_number || '',
     accountName: data.account_name || ''
@@ -824,6 +841,7 @@ async function start() {
   areas = await loadAreasFromDb();
   renderAreaSelect();
   renderLogo();
+  renderHero();
   renderChips();
   renderCart();
   renderFooter();
