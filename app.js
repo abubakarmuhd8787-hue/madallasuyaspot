@@ -5,7 +5,8 @@ let products = [];
 let areas = [];
 let settings = Object.assign({}, defaultSettings);
 
-// The logged-in customer's saved details (null when nobody is logged in)
+// Is a customer logged in right now? And their saved details.
+let loggedIn = false;
 let customerProfile = null;
 
 // The cart is saved as { productId: quantity } so it survives a page refresh
@@ -20,6 +21,18 @@ function saveCart() {
 
 function findProduct(id) {
   return products.find(function (p) { return p.id === Number(id); });
+}
+
+// ---------- LOGIN REQUIRED ----------
+// Sends the visitor to the login page. They come back to the shop afterwards.
+function goToLogin(nextPage) {
+  location.href = 'login.html?need=1&next=' + encodeURIComponent(nextPage || 'index.html');
+}
+
+// Checks the login live (not from memory), so it is always correct
+async function hasSession() {
+  const { data } = await db.auth.getSession();
+  return !!data.session;
 }
 
 // ---------- DELIVERY AREAS AND FEE ----------
@@ -129,6 +142,16 @@ function openProduct(product) {
   productModal.classList.remove('hidden');
 }
 
+// Tapping a product: logged-in customers see the popup,
+// everyone else is sent to log in or create an account.
+async function tryOpenProduct(product) {
+  if (!(await hasSession())) {
+    goToLogin('index.html');
+    return;
+  }
+  openProduct(product);
+}
+
 function closeProductPopup() {
   productModal.classList.add('hidden');
   popupProduct = null;
@@ -207,7 +230,12 @@ function renderProductPopup() {
   addBtn.type = 'button';
   addBtn.className = 'primary';
   addBtn.textContent = 'Add to cart';
-  addBtn.addEventListener('click', function () {
+  addBtn.addEventListener('click', async function () {
+    // Checked again, in case the login ran out while the popup was open
+    if (!(await hasSession())) {
+      goToLogin('index.html');
+      return;
+    }
     addAmountToCart(p.id, popupQty);
     showToast('✓ Added to cart: ' + qtyLabel(p, popupQty) + ' × ' + p.name);
     closeProductPopup();
@@ -327,17 +355,18 @@ function renderMenu() {
 
         const hint = document.createElement('p');
         hint.className = 'tap-hint';
-        hint.textContent = 'Tap to order';
+        hint.textContent = loggedIn ? 'Tap to order' : 'Log in to order';
 
         card.appendChild(price);
         card.appendChild(hint);
 
-        // Tapping the card (or pressing Enter on it) opens the popup
+        // Tapping the card (or pressing Enter on it) opens the popup,
+        // or the login page if the visitor is not logged in
         card.tabIndex = 0;
         card.setAttribute('role', 'button');
-        card.addEventListener('click', function () { openProduct(p); });
+        card.addEventListener('click', function () { tryOpenProduct(p); });
         card.addEventListener('keydown', function (event) {
-          if (event.key === 'Enter') openProduct(p);
+          if (event.key === 'Enter') tryOpenProduct(p);
         });
       } else {
         const badge = document.createElement('p');
@@ -519,13 +548,11 @@ function openCheckout() {
   updateSummary();
 }
 
-// Checkout needs an account. Anyone not logged in is sent to the login page,
+// Checkout needs a login. Anyone not logged in is sent to the login page,
 // and brought back here afterwards with their cart still saved.
 document.getElementById('checkoutBtn').addEventListener('click', async function () {
-  const { data } = await db.auth.getSession();
-
-  if (!data.session) {
-    location.href = 'login.html?need=1&next=' + encodeURIComponent('index.html?checkout=1');
+  if (!(await hasSession())) {
+    goToLogin('index.html?checkout=1');
     return;
   }
 
@@ -567,6 +594,12 @@ function showWhatsAppButton(message) {
 
 document.getElementById('checkoutForm').addEventListener('submit', async function (event) {
   event.preventDefault(); // stop the page from reloading
+
+  // Last check before the order is sent
+  if (!(await hasSession())) {
+    goToLogin('index.html?checkout=1');
+    return;
+  }
 
   const submitBtn = event.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
@@ -758,12 +791,15 @@ async function loadCustomer() {
   const checkoutBtn = document.getElementById('checkoutBtn');
 
   if (!data.session) {
+    loggedIn = false;
+    customerProfile = null;
     accountLink.textContent = 'Log in';
     accountLink.href = 'login.html';
     checkoutBtn.textContent = 'Log in to checkout';
     return;
   }
 
+  loggedIn = true;
   accountLink.textContent = 'My account';
   accountLink.href = 'account.html';
   checkoutBtn.textContent = 'Checkout';
@@ -789,10 +825,10 @@ async function start() {
   renderAreaSelect();
   renderLogo();
   renderChips();
-  renderMenu();
   renderCart();
   renderFooter();
   await loadCustomer();
+  renderMenu(); // drawn after the login check, so the card labels are right
 
   // Coming back from the login page: open checkout straight away
   if (new URLSearchParams(location.search).get('checkout') && customerProfile && cartCount() > 0) {
