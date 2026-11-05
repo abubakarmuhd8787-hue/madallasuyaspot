@@ -1,6 +1,6 @@
 (function () {
-  // Change this to true after Google login is set up in Supabase
-  const GOOGLE_LOGIN = false;
+  // Google login is switched on
+  const GOOGLE_LOGIN = true;
 
   const loginForm = document.getElementById('loginForm');
   const signupForm = document.getElementById('signupForm');
