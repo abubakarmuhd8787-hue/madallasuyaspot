@@ -1,0 +1,16 @@
+{
+  "id": "./index.html",
+  "name": "Madalla Ice Products and Suya Spot",
+  "short_name": "Madalla",
+  "description": "Order suya, shawarma, fresh chicken and fish. Delivery or pickup.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

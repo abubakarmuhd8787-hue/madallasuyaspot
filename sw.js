@@ -1,4 +1,4 @@
-// Madalla service worker: shows new-order notifications, even when the admin page is closed
+// Madalla service worker: shows new-order notifications and lets phones install the site as an app
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -7,6 +7,10 @@ self.addEventListener('install', function () {
 self.addEventListener('activate', function (event) {
   event.waitUntil(self.clients.claim());
 });
+
+// Needed so phones accept the site as an installable app.
+// It changes nothing: every page still loads from the internet as normal.
+self.addEventListener('fetch', function () {});
 
 self.addEventListener('push', function (event) {
   let data = {};
@@ -20,6 +24,7 @@ self.addEventListener('push', function (event) {
   event.waitUntil(
     self.registration.showNotification(data.title || 'New order', {
       body: data.body || '',
+      icon: 'icon-192.png',
       tag: data.tag || 'madalla-order',
       data: { url: data.url || 'admin.html?tab=orders' }
     })
