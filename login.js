@@ -13,6 +13,21 @@
     element.style.display = shown ? (displayWhenShown || '') : 'none';
   }
 
+  // ---------- ERRORS SENT BACK BY GOOGLE / SUPABASE ----------
+  // When Google login fails, the reason is in the address bar. Show it on the page.
+  function showReturnedError() {
+    const fromQuery = new URLSearchParams(location.search);
+    const fromHash = new URLSearchParams(location.hash.replace(/^#/, ''));
+
+    const message =
+      fromQuery.get('error_description') || fromHash.get('error_description') ||
+      fromQuery.get('error') || fromHash.get('error');
+
+    if (message) {
+      document.getElementById('loginError').textContent = 'Google login problem: ' + message;
+    }
+  }
+
   // ---------- WHERE TO GO AFTER LOGGING IN ----------
   // The shop sends us here with ?next=index.html?checkout=1
   // Only simple page names are allowed.
@@ -58,6 +73,7 @@
   showLoginBtn.addEventListener('click', showLoginForm);
   showSignupBtn.addEventListener('click', showSignupForm);
   showLoginForm();
+  showReturnedError();
 
   // ---------- CONTINUE WITH GOOGLE ----------
   if (GOOGLE_LOGIN) {
@@ -65,6 +81,8 @@
     setShown(document.getElementById('orText'), true, 'block');
 
     googleBtn.addEventListener('click', async function () {
+      document.getElementById('loginError').textContent = '';
+
       const { error } = await db.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: location.origin + location.pathname }
@@ -131,6 +149,11 @@
   });
 
   // ---------- ALREADY LOGGED IN (or just came back from Google) ----------
+  // Moves on as soon as a login is picked up, however it arrives
+  db.auth.onAuthStateChange(function (event, session) {
+    if (event === 'SIGNED_IN' && session) goNext();
+  });
+
   (async function start() {
     const { data } = await db.auth.getSession();
     if (data.session) goNext();
