@@ -97,11 +97,15 @@
       <section id="deliveryTab" class="hidden">
 
         <h2>Delivery areas</h2>
-        <p class="hint">Add the areas you deliver to, with a fee for each. Customers choose their area at checkout. If you add no areas, the single delivery fee from Settings is used for everyone.</p>
+        <p class="hint">All the local governments in Kano are listed. For each area you deliver to, type a delivery fee and tick "Active". Customers only see the areas that are Active. Press Save areas when you are done. If no area is Active, the single delivery fee from Settings is used for everyone.</p>
+        <input type="search" id="areaSearch" placeholder="Search for an area..." style="display:block;width:100%;padding:10px;font-size:1rem;margin-bottom:8px;">
+        <p id="areaSummary" class="hint"></p>
+        <button id="saveAreasTop" class="primary" type="button">Save areas</button>
         <div id="areaList"></div>
-        <button id="saveAreas" class="primary">Save areas</button>
+        <button id="saveAreas" class="primary" type="button">Save areas</button>
         <p id="areaMsg" class="ok-text"></p>
 
+        <h3>Add an area that is not in the list</h3>
         <form id="areaForm">
           <label>New area name
             <input type="text" id="newAreaName" required>

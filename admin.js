@@ -1,6 +1,7 @@
 let products = [];
 let areas = [];
 let riders = [];
+let areaSearchText = '';
 
 // The public key for push notifications (safe to be here)
 const VAPID_PUBLIC_KEY = 'BNdEBxyV0I09jkEqH1yjEu77ivbyc6z5_diG41E5pBUtaGNgySUT1dzw8p-dTYwCTlXkfqR1fRuN3aH_0K1NB9Q';
@@ -509,34 +510,64 @@ async function loadAreasAdmin() {
   }
 
   areas = data.map(function (row) {
-    return { id: row.id, name: row.name, fee: Number(row.fee), active: row.is_active };
+    return { id: row.id, name: row.name, fee: Number(row.fee), active: row.is_active, changed: false };
   });
+
+  // Areas that are switched on come first, then the rest in A to Z order
+  areas.sort(function (a, b) {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
   drawAreas();
 }
 
 function drawAreas() {
   const list = document.getElementById('areaList');
+  const summary = document.getElementById('areaSummary');
   list.innerHTML = '';
 
   if (areas.length === 0) {
+    summary.textContent = '';
     list.textContent = 'No areas yet. The single delivery fee from Settings is used.';
     return;
   }
 
-  areas.forEach(function (area) {
+  const switchedOn = areas.filter(function (a) { return a.active; }).length;
+  summary.textContent = switchedOn + ' of ' + areas.length + ' areas are switched on for customers.';
+
+  const shown = areas.filter(function (a) {
+    return a.name.toLowerCase().includes(areaSearchText);
+  });
+
+  if (shown.length === 0) {
+    list.textContent = 'No area matches your search.';
+    return;
+  }
+
+  shown.forEach(function (area) {
     const row = document.createElement('div');
     row.className = 'admin-row';
 
     const top = document.createElement('div');
     top.className = 'row-top';
-    top.appendChild(makeInput('text', area.name, 'Area name', function (v) { area.name = v; }));
+    const nameText = document.createElement('strong');
+    nameText.textContent = area.name;
+    top.appendChild(nameText);
     row.appendChild(top);
 
-    const fee = makeInput('number', area.fee, 'Fee', function (v) { area.fee = Number(v) || 0; });
+    // An empty box means no fee has been set yet
+    const fee = makeInput('number', area.fee === 0 ? '' : area.fee, 'Fee (₦)', function (v) {
+      area.fee = Number(v) || 0;
+      area.changed = true;
+    });
     fee.className = 'small';
     row.appendChild(fee);
 
-    row.appendChild(makeCheck('Active', area.active, function (v) { area.active = v; }));
+    row.appendChild(makeCheck('Active', area.active, function (v) {
+      area.active = v;
+      area.changed = true;
+    }));
 
     const del = document.createElement('button');
     del.className = 'danger small-btn';
@@ -556,8 +587,24 @@ function drawAreas() {
   });
 }
 
-document.getElementById('saveAreas').addEventListener('click', async function () {
-  const results = await Promise.all(areas.map(function (a) {
+async function saveAreas() {
+  const changed = areas.filter(function (a) { return a.changed; });
+
+  if (changed.length === 0) {
+    flash('areaMsg', 'Nothing to save yet.');
+    return;
+  }
+
+  // An area that is switched on with no fee means free delivery. Ask first.
+  const free = changed.filter(function (a) { return a.active && a.fee === 0; });
+  if (free.length > 0) {
+    const names = free.map(function (a) { return a.name; }).join(', ');
+    if (!confirm('These areas are switched on with no fee, so delivery there will be FREE:\n\n' + names + '\n\nContinue?')) {
+      return;
+    }
+  }
+
+  const results = await Promise.all(changed.map(function (a) {
     return db.from('delivery_areas').update({
       name: a.name.trim(),
       fee: a.fee,
@@ -566,7 +613,21 @@ document.getElementById('saveAreas').addEventListener('click', async function ()
   }));
 
   const failed = results.find(function (r) { return r.error; });
-  flash('areaMsg', failed ? 'Could not save: ' + failed.error.message : 'Areas saved.');
+  if (failed) {
+    flash('areaMsg', 'Could not save: ' + failed.error.message);
+    return;
+  }
+
+  flash('areaMsg', 'Saved ' + changed.length + (changed.length === 1 ? ' area.' : ' areas.'));
+  await loadAreasAdmin();
+}
+
+document.getElementById('saveAreas').addEventListener('click', saveAreas);
+document.getElementById('saveAreasTop').addEventListener('click', saveAreas);
+
+document.getElementById('areaSearch').addEventListener('input', function (event) {
+  areaSearchText = event.target.value.trim().toLowerCase();
+  drawAreas();
 });
 
 document.getElementById('areaForm').addEventListener('submit', async function (event) {
